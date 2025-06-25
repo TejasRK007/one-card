@@ -4,7 +4,7 @@ import 'widgets/upi_pin_dialog.dart';
 
 class RechargePage extends StatefulWidget {
   final String phone, username, email, password;
-  final String? upiPin;
+  final String upiPin;
   final void Function(String)? onPinSet;
 
   const RechargePage({
@@ -13,7 +13,7 @@ class RechargePage extends StatefulWidget {
     required this.username,
     required this.email,
     required this.password,
-    this.upiPin,
+    required this.upiPin,
     this.onPinSet,
   });
 
@@ -34,28 +34,46 @@ class _RechargePageState extends State<RechargePage> {
     final pinVerified = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => UpiPinDialog(
-        currentPin: widget.upiPin,
-        onPinVerified: (_) async {
-          try {
-            final ref = FirebaseDatabase.instance.ref().child('users/${widget.phone}/balance');
-            final snapshot = await ref.get();
-            double current = snapshot.exists ? double.tryParse(snapshot.value.toString()) ?? 0.0 : 0.0;
-            final updated = current + enteredAmount;
-            await ref.set(updated);
-            Navigator.of(dialogContext).pop(true);
-          } catch (e) {
-            setState(() => message = 'Recharge failed: $e');
-            Navigator.of(dialogContext).pop(false);
-          }
-        },
-        onPinSet: widget.onPinSet,
-      ),
+      builder:
+          (dialogContext) => UpiPinDialog(
+            currentPin: widget.upiPin,
+            onPinVerified: (_) {
+              Navigator.of(dialogContext).pop(true);
+            },
+            onPinSet: widget.onPinSet,
+          ),
     );
     if (pinVerified == true) {
-      setState(() => message = 'Recharged successfully! New Balance: ₹${(double.tryParse(_controller.text.trim()) ?? 0.0).toStringAsFixed(2)}');
+      try {
+        final ref = FirebaseDatabase.instance.ref().child(
+          'users/${widget.phone}/balance',
+        );
+        final snapshot = await ref.get();
+        double current =
+            snapshot.exists
+                ? double.tryParse(snapshot.value.toString()) ?? 0.0
+                : 0.0;
+        final updated = current + enteredAmount;
+        await ref.set(updated);
+        if (!mounted) return;
+        setState(
+          () =>
+              message =
+                  'Recharged successfully! New Balance: ₹${(double.tryParse(_controller.text.trim()) ?? 0.0).toStringAsFixed(2)}',
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => message = 'Recharge failed: $e');
+      }
     } else {
-      setState(() => message = message.isNotEmpty ? message : 'Recharge failed. Please try again.');
+      if (!mounted) return;
+      setState(
+        () =>
+            message =
+                message.isNotEmpty
+                    ? message
+                    : 'Recharge failed. Please try again.',
+      );
     }
   }
 

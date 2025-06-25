@@ -9,7 +9,7 @@ class TransportPage extends StatefulWidget {
   final String email;
   final String phone;
   final String password;
-  final String? upiPin;
+  final String upiPin;
   final void Function(String)? onPinSet;
 
   const TransportPage({
@@ -18,7 +18,7 @@ class TransportPage extends StatefulWidget {
     required this.email,
     required this.phone,
     required this.password,
-    this.upiPin,
+    required this.upiPin,
     this.onPinSet,
   });
 

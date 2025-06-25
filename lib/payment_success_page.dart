@@ -89,7 +89,11 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
             ),
             Text(
               widget.recipient,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
@@ -97,17 +101,21 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
               icon: const Icon(Icons.home),
               label: const Text('Back to Home'),
               onPressed: () {
+                if (!mounted) return;
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => HomeScreen(
-                      username: widget.username,
-                      email: widget.email,
-                      phone: widget.phone,
-                      password: widget.password,
-                      isDarkMode: false,
-                      onThemeChanged: (v) {},
-                    ),
+                    builder:
+                        (_) => HomeScreen(
+                          username: widget.username,
+                          email: widget.email,
+                          phone: widget.phone,
+                          password: widget.password,
+                          isDarkMode: false,
+                          onThemeChanged: (v) {},
+                          upiPin:
+                              '', // TODO: Pass the actual upiPin if available
+                        ),
                   ),
                   (route) => false,
                 );
@@ -115,7 +123,10 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
                 textStyle: const TextStyle(fontSize: 18),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

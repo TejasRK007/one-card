@@ -21,6 +21,10 @@ class _UpiPinDialogState extends State<UpiPinDialog> {
   final TextEditingController _confirmPinController = TextEditingController();
   String? _errorText;
   bool _isSettingPin = false;
+  bool _obscurePin = true;
+  int _retryCount = 0;
+  bool _locked = false;
+  DateTime? _lockEnd;
 
   @override
   void initState() {
@@ -29,13 +33,14 @@ class _UpiPinDialogState extends State<UpiPinDialog> {
   }
 
   void _handleSubmit() {
+    if (_locked) return;
     final pin = _pinController.text.trim();
+    if (pin.length != 4) {
+      setState(() => _errorText = 'PIN must be 4 digits');
+      return;
+    }
     if (_isSettingPin) {
       final confirmPin = _confirmPinController.text.trim();
-      if (pin.length < 4) {
-        setState(() => _errorText = 'PIN must be at least 4 digits');
-        return;
-      }
       if (pin != confirmPin) {
         setState(() => _errorText = 'PINs do not match');
         return;
@@ -47,7 +52,17 @@ class _UpiPinDialogState extends State<UpiPinDialog> {
         widget.onPinVerified(pin);
         Navigator.of(context).pop();
       } else {
-        setState(() => _errorText = 'Incorrect PIN');
+        setState(() {
+          _retryCount++;
+          _errorText = 'Incorrect PIN';
+          if (_retryCount >= 3) {
+            _locked = true;
+            _lockEnd = DateTime.now().add(const Duration(seconds: 30));
+            Future.delayed(const Duration(seconds: 30), () {
+              if (mounted) setState(() { _locked = false; _retryCount = 0; _errorText = null; });
+            });
+          }
+        });
       }
     }
   }
@@ -62,20 +77,27 @@ class _UpiPinDialogState extends State<UpiPinDialog> {
           TextField(
             controller: _pinController,
             keyboardType: TextInputType.number,
-            obscureText: true,
-            maxLength: 6,
+            obscureText: _obscurePin,
+            maxLength: 4,
+            enabled: !_locked,
             decoration: InputDecoration(
               labelText: 'UPI PIN',
               counterText: '',
-              errorText: _errorText,
+              errorText: _locked ? 'Too many attempts. Try again in 30s.' : _errorText,
+              suffixIcon: IconButton(
+                icon: Icon(_obscurePin ? Icons.visibility_off : Icons.visibility),
+                onPressed: () => setState(() => _obscurePin = !_obscurePin),
+                tooltip: _obscurePin ? 'Show PIN' : 'Hide PIN',
+              ),
             ),
           ),
           if (_isSettingPin)
             TextField(
               controller: _confirmPinController,
               keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 6,
+              obscureText: _obscurePin,
+              maxLength: 4,
+              enabled: !_locked,
               decoration: const InputDecoration(
                 labelText: 'Confirm PIN',
                 counterText: '',
@@ -89,7 +111,7 @@ class _UpiPinDialogState extends State<UpiPinDialog> {
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: _handleSubmit,
+          onPressed: _locked ? null : _handleSubmit,
           child: Text(_isSettingPin ? 'Set PIN' : 'Verify'),
         ),
       ],

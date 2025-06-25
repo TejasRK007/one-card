@@ -12,7 +12,7 @@ class UPIPaymentPage extends StatefulWidget {
   final String phone;
   final String password;
   final double? initialAmount;
-  final String? upiPin;
+  final String upiPin;
   final void Function(String)? onPinSet;
 
   const UPIPaymentPage({
@@ -25,7 +25,7 @@ class UPIPaymentPage extends StatefulWidget {
     required this.phone,
     required this.password,
     this.initialAmount,
-    this.upiPin,
+    required this.upiPin,
     this.onPinSet,
   }) : super(key: key);
 
@@ -54,82 +54,123 @@ class _UPIPaymentPageState extends State<UPIPaymentPage> {
       setState(() {
         errorMessage = 'Please enter a valid amount.';
       });
+      print('Invalid amount entered');
+      _showErrorDialog(errorMessage);
       return;
     }
     final pinVerified = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => UpiPinDialog(
-        currentPin: widget.upiPin,
-        onPinVerified: (_) async {
-          try {
-            setState(() {
-              isSubmitting = true;
-              errorMessage = '';
-            });
-            final userRef = FirebaseDatabase.instance.ref().child('users/${widget.phone}');
-            final balanceSnapshot = await userRef.child('balance').get();
-            final currentBalance = balanceSnapshot.exists
+      builder:
+          (dialogContext) => UpiPinDialog(
+            currentPin: widget.upiPin,
+            onPinVerified: (_) {
+              Navigator.of(dialogContext).pop(true);
+            },
+            onPinSet: widget.onPinSet,
+          ),
+    );
+    print('PIN verified: $pinVerified');
+    if (pinVerified == true) {
+      setState(() {
+        isSubmitting = true;
+        errorMessage = '';
+      });
+      try {
+        final userRef = FirebaseDatabase.instance.ref().child(
+          'users/${widget.phone}',
+        );
+        final balanceSnapshot = await userRef.child('balance').get();
+        final currentBalance =
+            balanceSnapshot.exists
                 ? double.tryParse(balanceSnapshot.value.toString()) ?? 0.0
                 : 0.0;
-            if (currentBalance < enteredAmount) {
-              setState(() {
-                errorMessage = 'Insufficient balance.';
-                isSubmitting = false;
-              });
-              Navigator.of(dialogContext).pop(false);
-              return;
-            }
-            final updatedBalance = currentBalance - enteredAmount;
-            await userRef.update({'balance': updatedBalance});
-            // Increment reward points and log history
-            final rewardPointsSnapshot = await userRef.child('rewardPoints').get();
-            final currentPoints = rewardPointsSnapshot.exists ? int.tryParse(rewardPointsSnapshot.value.toString()) ?? 0 : 0;
-            final newPoints = currentPoints + 1;
-            await userRef.update({'rewardPoints': newPoints});
-            await userRef.child('rewardHistory').push().set({
-              'points': 1,
-              'timestamp': widget.timestamp,
-              'description': 'Earned for QR Payment',
-            });
-            await userRef.child('transactions').push().set({
-              'amount': enteredAmount,
-              'timestamp': widget.timestamp,
-              'purpose': 'QR Payment - ${widget.scannedData}',
-            });
-            if (!mounted) return;
-            Navigator.of(dialogContext).pop(true);
-          } catch (e) {
-            setState(() {
-              errorMessage = 'Failed to update balance: $e';
-              isSubmitting = false;
-            });
-            Navigator.of(dialogContext).pop(false);
-          }
-        },
-        onPinSet: widget.onPinSet,
-      ),
-    );
-    if (pinVerified == true) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PaymentSuccessPage(
-            amount: enteredAmount,
-            recipient: widget.scannedData,
-            username: widget.username,
-            email: widget.email,
-            phone: widget.phone,
-            password: widget.password,
+        print('Current balance: $currentBalance');
+        if (currentBalance < enteredAmount) {
+          setState(() {
+            errorMessage = 'Insufficient balance.';
+            isSubmitting = false;
+          });
+          print('Insufficient balance');
+          _showErrorDialog(errorMessage);
+          return;
+        }
+        final updatedBalance = currentBalance - enteredAmount;
+        await userRef.update({'balance': updatedBalance});
+        print('Balance updated to $updatedBalance');
+        // Increment reward points and log history
+        final rewardPointsSnapshot = await userRef.child('rewardPoints').get();
+        final currentPoints =
+            rewardPointsSnapshot.exists
+                ? int.tryParse(rewardPointsSnapshot.value.toString()) ?? 0
+                : 0;
+        final newPoints = currentPoints + 1;
+        await userRef.update({'rewardPoints': newPoints});
+        await userRef.child('rewardHistory').push().set({
+          'points': 1,
+          'timestamp': widget.timestamp,
+          'description': 'Earned for QR Payment',
+        });
+        await userRef.child('transactions').push().set({
+          'amount': enteredAmount,
+          'timestamp': widget.timestamp,
+          'purpose': 'QR Payment - ${widget.scannedData}',
+        });
+        print('Transaction recorded');
+        if (!mounted) return;
+        print('Payment successful, navigating to success page');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder:
+                (_) => PaymentSuccessPage(
+                  amount: enteredAmount,
+                  recipient: widget.scannedData,
+                  username: widget.username,
+                  email: widget.email,
+                  phone: widget.phone,
+                  password: widget.password,
+                ),
           ),
-        ),
-      );
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          errorMessage = 'Failed to update balance: $e';
+          isSubmitting = false;
+        });
+        print('Payment failed: $e');
+        _showErrorDialog(errorMessage);
+      }
     } else {
+      if (!mounted) return;
       setState(() {
-        errorMessage = errorMessage.isNotEmpty ? errorMessage : 'Payment failed. Please try again.';
+        errorMessage =
+            errorMessage.isNotEmpty
+                ? errorMessage
+                : 'Payment failed. Please try again.';
         isSubmitting = false;
       });
+      print('PIN verification failed or dialog cancelled');
+      _showErrorDialog(errorMessage);
     }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Payment Error'),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+    );
   }
 
   @override
@@ -145,8 +186,14 @@ class _UPIPaymentPageState extends State<UPIPaymentPage> {
               if (widget.scannedData.isNotEmpty)
                 Column(
                   children: [
-                    const Text('Payment For:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text(widget.scannedData, style: const TextStyle(fontSize: 16)),
+                    const Text(
+                      'Payment For:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      widget.scannedData,
+                      style: const TextStyle(fontSize: 16),
+                    ),
                     const SizedBox(height: 16),
                   ],
                 ),
@@ -175,9 +222,10 @@ class _UPIPaymentPageState extends State<UPIPaymentPage> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   textStyle: const TextStyle(fontSize: 18),
                 ),
-                child: isSubmitting
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Submit'),
+                child:
+                    isSubmitting
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text('Submit'),
               ),
               if (errorMessage.isNotEmpty)
                 Padding(

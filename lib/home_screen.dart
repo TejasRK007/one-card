@@ -30,6 +30,7 @@ class HomeScreen extends StatefulWidget {
   final String password;
   final bool isDarkMode;
   final ValueChanged<bool> onThemeChanged;
+  final String upiPin;
 
   const HomeScreen({
     super.key,
@@ -39,6 +40,7 @@ class HomeScreen extends StatefulWidget {
     required this.password,
     required this.isDarkMode,
     required this.onThemeChanged,
+    required this.upiPin,
   });
 
   @override
@@ -47,7 +49,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  String? _upiPin;
   String? _cardUID;
   StreamSubscription<DatabaseEvent>? _tapSubscription;
 
@@ -106,12 +107,8 @@ class _HomeScreenState extends State<HomeScreen> {
         password: widget.password,
         isDarkMode: widget.isDarkMode,
         onThemeChanged: widget.onThemeChanged,
-        upiPin: _upiPin,
-        onPinSet: (pin) {
-          setState(() {
-            _upiPin = pin;
-          });
-        },
+        upiPin: widget.upiPin,
+        onPinSet: (pin) {},
         cardUID: _cardUID,
         onCardLinked: (uid) {
           setState(() {
@@ -125,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
         email: widget.email,
         phone: widget.phone,
         password: widget.password,
-        upiPin: _upiPin,
+        upiPin: widget.upiPin,
       ),
       RewardsPage(
         phone: widget.phone,
@@ -223,7 +220,7 @@ class HomePageContent extends StatelessWidget {
   final String password;
   final bool isDarkMode;
   final ValueChanged<bool> onThemeChanged;
-  final String? upiPin;
+  final String upiPin;
   final Function(String) onPinSet;
   final String? cardUID;
   final Function(String) onCardLinked;

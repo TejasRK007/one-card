@@ -9,7 +9,7 @@ class QRScanPage extends StatefulWidget {
   final String email;
   final String phone;
   final String password;
-  final String? upiPin;
+  final String upiPin;
 
   const QRScanPage({
     Key? key,
@@ -17,7 +17,7 @@ class QRScanPage extends StatefulWidget {
     required this.email,
     required this.phone,
     required this.password,
-    this.upiPin,
+    required this.upiPin,
   }) : super(key: key);
 
   @override
@@ -42,13 +42,11 @@ class _QRScanPageState extends State<QRScanPage> {
       });
 
       final cardId = code;
-      final timestamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+      final timestamp = DateFormat(
+        'yyyy-MM-dd HH:mm:ss',
+      ).format(DateTime.now());
 
-      final scanData = {
-        'cardId': cardId,
-        'data': code,
-        'timestamp': timestamp,
-      };
+      final scanData = {'cardId': cardId, 'data': code, 'timestamp': timestamp};
 
       try {
         final db = FirebaseDatabase.instance.ref();
@@ -58,15 +56,17 @@ class _QRScanPageState extends State<QRScanPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => UPIPaymentPage(
-              cardId: cardId,
-              scannedData: code,
-              timestamp: timestamp,
-              username: widget.username,
-              email: widget.email,
-              phone: widget.phone,
-              password: widget.password,
-            ),
+            builder:
+                (context) => UPIPaymentPage(
+                  cardId: cardId,
+                  scannedData: code,
+                  timestamp: timestamp,
+                  username: widget.username,
+                  email: widget.email,
+                  phone: widget.phone,
+                  password: widget.password,
+                  upiPin: widget.upiPin,
+                ),
           ),
         ).then((_) {
           setState(() {
@@ -75,9 +75,9 @@ class _QRScanPageState extends State<QRScanPage> {
         });
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to log scan: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Failed to log scan: $e")));
         setState(() {
           isScanning = true;
         });
@@ -114,7 +114,10 @@ class _QRScanPageState extends State<QRScanPage> {
             child: Center(
               child: Text(
                 scannedData,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),

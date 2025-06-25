@@ -15,19 +15,31 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _upiPinController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _obscureUpiPin = true;
+  String? _upiPinError;
 
   void _login() {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
     final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
+    final upiPin = _upiPinController.text.trim();
+
+    setState(() { _upiPinError = null; });
+
+    if (upiPin.length != 4) {
+      setState(() { _upiPinError = 'UPI PIN must be 4 digits'; });
+      return;
+    }
 
     if (username.isNotEmpty &&
         password.isNotEmpty &&
         email.isNotEmpty &&
-        phone.isNotEmpty) {
+        phone.isNotEmpty &&
+        upiPin.length == 4) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -38,12 +50,13 @@ class _LoginPageState extends State<LoginPage> {
             password: password,
             isDarkMode: widget.isDarkMode,
             onThemeChanged: widget.onThemeChanged,
+            upiPin: upiPin,
           ),
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill in all fields")),
+        const SnackBar(content: Text("Please fill in all fields and enter a 4-digit UPI PIN")),
       );
     }
   }
@@ -99,6 +112,17 @@ class _LoginPageState extends State<LoginPage> {
                   controller: _passwordController,
                   isPassword: true,
                 ),
+                const SizedBox(height: 20),
+                _inputField(
+                  label: "UPI PIN (4 digits)",
+                  icon: Icons.pin,
+                  controller: _upiPinController,
+                  isPassword: true,
+                  isUpiPin: true,
+                  obscureText: _obscureUpiPin,
+                  onToggleObscure: () => setState(() => _obscureUpiPin = !_obscureUpiPin),
+                  errorText: _upiPinError,
+                ),
                 const SizedBox(height: 35),
                 ElevatedButton(
                   onPressed: _login,
@@ -125,31 +149,44 @@ class _LoginPageState extends State<LoginPage> {
     required IconData icon,
     required TextEditingController controller,
     required bool isPassword,
+    bool isUpiPin = false,
+    bool obscureText = false,
+    VoidCallback? onToggleObscure,
+    String? errorText,
   }) {
     return TextField(
       controller: controller,
-      obscureText: isPassword ? _obscurePassword : false,
+      obscureText: obscureText,
       style: const TextStyle(color: Colors.white),
-      keyboardType: label == 'Phone Number'
+      keyboardType: isUpiPin ? TextInputType.number : (label == 'Phone Number'
           ? TextInputType.phone
-          : (label == 'Email' ? TextInputType.emailAddress : TextInputType.text),
+          : (label == 'Email' ? TextInputType.emailAddress : TextInputType.text)),
+      maxLength: isUpiPin ? 4 : null,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white70),
         prefixIcon: Icon(icon, color: Colors.white),
-        suffixIcon: isPassword
+        suffixIcon: isUpiPin
             ? IconButton(
-          icon: Icon(
-            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-            color: Colors.white54,
-          ),
-          onPressed: () {
-            setState(() {
-              _obscurePassword = !_obscurePassword;
-            });
-          },
-        )
-            : null,
+                icon: Icon(
+                  obscureText ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.white54,
+                ),
+                onPressed: onToggleObscure,
+              )
+            : (isPassword && !isUpiPin
+                ? IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.white54,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  )
+                : null),
         filled: true,
         fillColor: Colors.white10,
         focusedBorder: OutlineInputBorder(
@@ -160,6 +197,8 @@ class _LoginPageState extends State<LoginPage> {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.white24),
         ),
+        counterText: isUpiPin ? '' : null,
+        errorText: errorText,
       ),
     );
   }

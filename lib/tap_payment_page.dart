@@ -3,7 +3,7 @@ import 'payment_success_page.dart';
 import 'widgets/upi_pin_dialog.dart';
 
 class TapPaymentPage extends StatefulWidget {
-  final String? upiPin;
+  final String upiPin;
   final String username;
   final String email;
   final String phone;
@@ -30,7 +30,13 @@ class _TapPaymentPageState extends State<TapPaymentPage> {
   double? _amount;
   final _pinController = TextEditingController();
 
-  final List<String> _categories = ['Transport', 'Food', 'Mobile Recharge', 'WiFi Recharge', 'Shopping'];
+  final List<String> _categories = [
+    'Transport',
+    'Food',
+    'Mobile Recharge',
+    'WiFi Recharge',
+    'Shopping',
+  ];
 
   void _showPinDialogAndPay() async {
     if (_formKey.currentState!.validate()) {
@@ -38,33 +44,37 @@ class _TapPaymentPageState extends State<TapPaymentPage> {
       final pinVerified = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (dialogContext) => UpiPinDialog(
-          currentPin: widget.upiPin,
-          onPinVerified: (_) {
-            try {
-              Navigator.of(dialogContext).pop(true);
-            } catch (e) {
-              Navigator.of(dialogContext).pop(false);
-            }
-          },
-          onPinSet: widget.onPinSet,
-        ),
+        builder:
+            (dialogContext) => UpiPinDialog(
+              currentPin: widget.upiPin,
+              onPinVerified: (_) {
+                try {
+                  Navigator.of(dialogContext).pop(true);
+                } catch (e) {
+                  Navigator.of(dialogContext).pop(false);
+                }
+              },
+              onPinSet: widget.onPinSet,
+            ),
       );
       if (pinVerified == true) {
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => PaymentSuccessPage(
-              amount: _amount!,
-              recipient: _selectedCategory,
-              username: widget.username,
-              email: widget.email,
-              phone: widget.phone,
-              password: widget.password,
-            ),
+            builder:
+                (_) => PaymentSuccessPage(
+                  amount: _amount!,
+                  recipient: _selectedCategory,
+                  username: widget.username,
+                  email: widget.email,
+                  phone: widget.phone,
+                  password: widget.password,
+                ),
           ),
         );
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Payment failed. Please try again.')),
         );
@@ -85,12 +95,13 @@ class _TapPaymentPageState extends State<TapPaymentPage> {
             children: [
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
-                items: _categories.map((String category) {
-                  return DropdownMenuItem<String>(
-                    value: category,
-                    child: Text(category),
-                  );
-                }).toList(),
+                items:
+                    _categories.map((String category) {
+                      return DropdownMenuItem<String>(
+                        value: category,
+                        child: Text(category),
+                      );
+                    }).toList(),
                 onChanged: (newValue) {
                   setState(() {
                     _selectedCategory = newValue!;
@@ -114,15 +125,7 @@ class _TapPaymentPageState extends State<TapPaymentPage> {
               ),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
-                  if (widget.upiPin == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please set a UPI PIN in settings first.')),
-                    );
-                    return;
-                  }
-                  _showPinDialogAndPay();
-                },
+                onPressed: _showPinDialogAndPay,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   textStyle: const TextStyle(fontSize: 18),
@@ -135,4 +138,4 @@ class _TapPaymentPageState extends State<TapPaymentPage> {
       ),
     );
   }
-} 
+}
